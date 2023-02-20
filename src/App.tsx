@@ -1,14 +1,21 @@
 import XMLParser from '@kazukinagata/react-xml-parser';
 import type { JSZipObject } from 'jszip';
 import JSZip from 'jszip';
-import { CloudArrowUp } from 'phosphor-react';
+import { CloudArrowUp, PaperPlaneTilt } from 'phosphor-react';
 import type { ChangeEvent, ReactElement } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { toast, ToastContainer } from 'react-toastify';
 import { ThemeProvider } from 'styled-components';
 import { v4 as uuidv4 } from 'uuid';
 
+import 'react-toastify/dist/ReactToastify.css';
 import { FilesService } from './api';
-import { AppContainer, FilesContainer, UploadButton } from './styles';
+import {
+	AppContainer,
+	FilesContainer,
+	ImportButton,
+	SendButton,
+} from './styles';
 import { GlobalStyle } from './styles/global';
 import { defaultTheme } from './styles/themes/default';
 
@@ -28,6 +35,7 @@ interface Doctor {
 export interface XMLItem {
 	id?: string;
 	name: string;
+	status: string;
 	employment: {
 		cpf: string;
 		enrollment: string;
@@ -54,6 +62,7 @@ export function App(): ReactElement {
 
 				const item: XMLItem = {
 					id: uuidv4(),
+					status: 'Na fila',
 					name: file.name,
 					employment: {
 						cpf: xmlData?.children[0].children[2].children[0].value as string,
@@ -96,29 +105,58 @@ export function App(): ReactElement {
 	const uploadFiles = useCallback(async () => {
 		try {
 			await Promise.all(
-				xmlFiles.map(async (item) => await FilesService.create(item)),
+				xmlFiles.map(async (item) => {
+					setXmlFiles((state) =>
+						state.map((xmlFile) => {
+							if (xmlFile.id === item.id) {
+								return {
+									...xmlFile,
+									status: 'Enviando',
+								};
+							}
+
+							return xmlFile;
+						}),
+					);
+					return await FilesService.create(item);
+				}),
 			);
 
-			console.log(`Files created successfully`);
+			setXmlFiles((state) =>
+				state.map((item) => {
+					return {
+						...item,
+						status: 'Enviado',
+					};
+				}),
+			);
+
+			toast.success(`${xmlFiles.length} data of xml files successfully saved`);
+
+			setTimeout(() => {
+				setXmlFiles([]);
+			}, 5000);
 		} catch (error) {
-			console.log(error);
+			toast.error(`error when trying to save data: ${error}`);
 		}
 	}, [xmlFiles]);
-
-	useEffect(() => {
-		if (xmlFiles && xmlFiles.length > 0) uploadFiles();
-	}, [uploadFiles, xmlFiles]);
 
 	return (
 		<ThemeProvider theme={defaultTheme}>
 			<AppContainer>
-				<UploadButton>
-					<input
-						type="file"
-						onChange={handleImport}
-					/>
-					<CloudArrowUp size={24} /> Importar
-				</UploadButton>
+				{xmlFiles.length > 0 ? (
+					<SendButton onClick={uploadFiles}>
+						<PaperPlaneTilt size={24} /> Enviar
+					</SendButton>
+				) : (
+					<ImportButton>
+						<input
+							type="file"
+							onChange={handleImport}
+						/>
+						<CloudArrowUp size={24} /> Importar
+					</ImportButton>
+				)}
 
 				<FilesContainer>
 					{xmlFiles.length > 0 && (
@@ -135,7 +173,7 @@ export function App(): ReactElement {
 									<tr key={file.id}>
 										<td>{`#${index + 1}`}</td>
 										<td>{file.name}</td>
-										<td>Na fila</td>
+										<td>{file.status}</td>
 									</tr>
 								))}
 							</tbody>
@@ -143,6 +181,7 @@ export function App(): ReactElement {
 					)}
 				</FilesContainer>
 			</AppContainer>
+			<ToastContainer theme="colored" />
 			<GlobalStyle />
 		</ThemeProvider>
 	);

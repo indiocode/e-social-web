@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-import styled from 'styled-components';
+import styled, { css } from 'styled-components';
 
-export const UploadButton = styled.label`
+const BaseButton = css`
 	width: 10rem;
 	height: 2.8125rem;
 	padding: 0 1rem;
@@ -12,11 +12,19 @@ export const UploadButton = styled.label`
 	border-radius: 5px;
 	cursor: pointer;
 	background: ${({ theme }) => theme['gray-600']};
+	color: ${({ theme }) => theme['white']};
 	border: 1px solid ${({ theme }) => theme['gray-300']};
+`;
 
+export const ImportButton = styled.label`
+	${BaseButton}
 	input[type='file'] {
 		display: none;
 	}
+`;
+
+export const SendButton = styled.button`
+	${BaseButton}
 `;
 
 export const AppContainer = styled.section`
